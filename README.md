@@ -1,11 +1,7 @@
-## My Project
+## volume-modifier-for-k8s
 
-TODO: Fill this README out!
+volume-modifier-for-k8s is a sidecar deployed alongside CSI drivers to enable volume modification through annotations on the PVC.
 
-Be sure to:
-
-* Change the title in this README
-* Edit your repository description on GitHub
 
 ## Security
 

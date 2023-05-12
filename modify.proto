@@ -1,0 +1,40 @@
+syntax = "proto3";
+package modify.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/kubernetes-sigs/aws-ebs-csi-driver/pkg/volumemodifier/rpc";
+
+service Modify {
+    rpc GetCSIDriverModificationCapability(GetCSIDriverModificationCapabilityRequest)
+        returns (GetCSIDriverModificationCapabilityResponse) {}
+
+    rpc ModifyVolumeProperties(ModifyVolumePropertiesRequest)
+        returns (ModifyVolumePropertiesResponse) {}
+}
+
+message GetCSIDriverModificationCapabilityRequest {
+    // Intentionally empty.
+}
+
+message GetCSIDriverModificationCapabilityResponse {
+    // Intentionally empty.
+}
+
+message ModifyVolumePropertiesRequest {
+    // Name of the volume.
+    // This field is REQUIRED.
+    string name = 1;
+
+    // New volume attributes.
+    // This field is REQUIRED.
+    map<string, string> parameters = 2;
+
+    // Contains additional information that
+    // may be required by driver.
+    map<string, string> context = 3;
+}
+
+message ModifyVolumePropertiesResponse {
+    // Intentionally empty.
+}
