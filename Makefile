@@ -1,13 +1,13 @@
 PROTO_FILE=modify.proto
 PROTO_GENERATED_FILES_PATH=pkg/rpc
 VERSION="v0.1.0"
-
+LDFLAGS="-X 'main.version=$(VERSION)'"
 .PHONY: all
 all: build
 
 .PHONY: build
 build:
-	go build -o bin/main -ldflags="-X 'main.version=$(VERSION)'" cmd/main.go
+	go build -o bin/main -ldflags ${LDFLAGS} cmd/main.go
 
 .PHONY: proto
 proto:
@@ -24,6 +24,11 @@ clean:
 
 .PHONY: check
 check: check-proto
+
+.PHONY: linux/$(ARCH) bin/aws-ebs-csi-driver
+linux/$(ARCH): bin/aws-ebs-csi-driver
+bin/aws-ebs-csi-driver: | bin
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -mod=mod -ldflags ${LDFLAGS} -o bin/aws-ebs-csi-driver ./cmd
 
 .PHONY: check-proto
 check-proto:

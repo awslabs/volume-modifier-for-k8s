@@ -3,7 +3,7 @@ package modify.v1;
 
 import "google/protobuf/descriptor.proto";
 
-option go_package = "github.com/kubernetes-sigs/aws-ebs-csi-driver/pkg/volumemodifier/rpc";
+option go_package = "github.com/awslabs/volume-modifier-for-k8s/pkg/rpc";
 
 service Modify {
     rpc GetCSIDriverModificationCapability(GetCSIDriverModificationCapabilityRequest)
