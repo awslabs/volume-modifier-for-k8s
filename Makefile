@@ -25,10 +25,10 @@ clean:
 .PHONY: check
 check: check-proto
 
-.PHONY: linux/$(ARCH) bin/aws-ebs-csi-driver
-linux/$(ARCH): bin/aws-ebs-csi-driver
-bin/aws-ebs-csi-driver: | bin
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -mod=mod -ldflags ${LDFLAGS} -o bin/aws-ebs-csi-driver ./cmd
+.PHONY: linux/$(ARCH) bin/volume-modifier-for-k8s
+linux/$(ARCH): bin/volume-modifier-for-k8s
+bin/volume-modifier-for-k8s: | bin
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -mod=mod -ldflags ${LDFLAGS} -o bin/volume-modifier-for-k8s ./cmd
 
 .PHONY: check-proto
 check-proto:
