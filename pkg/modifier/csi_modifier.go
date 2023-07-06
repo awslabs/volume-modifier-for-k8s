@@ -38,7 +38,7 @@ func (c *csiModifier) Name() string {
 }
 
 func (c *csiModifier) Modify(pv *v1.PersistentVolume, params, reqContext map[string]string) error {
-	klog.V(6).InfoS("Received modify request", "pv", pv, "params", params)
+	klog.V(5).InfoS("Received modify request", "pv", pv, "params", params)
 
 	var (
 		volumeID string
