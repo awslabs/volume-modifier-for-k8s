@@ -23,6 +23,8 @@ const (
 	namespace = "default"
 )
 
+type pvcModifier func(claim *v1.PersistentVolumeClaim)
+
 func TestControllerRun(t *testing.T) {
 	testCases := []struct {
 		name                                   string
@@ -35,6 +37,7 @@ func TestControllerRun(t *testing.T) {
 		expectInProgressModificationAnnotation bool
 		updatedCapacity                        string
 		expectSuccessfulModification           bool
+		pvcModification                        pvcModifier
 	}{
 		{
 			name:       "volume modification succeeds after updating annotation",
@@ -77,6 +80,19 @@ func TestControllerRun(t *testing.T) {
 			expectedModifyVolumeCallCount: 0,
 			updatedCapacity:               "35Gi",
 			expectSuccessfulModification:  false,
+		},
+		{
+			name:       "volume modification after PV is bound",
+			driverName: "ebs.csi.aws.com",
+			pvc:        newFakePendingPVCAnnotated(),
+			pv:         newFakePV("testPVC", namespace, "test"),
+			pvcModification: func(pvc *v1.PersistentVolumeClaim) {
+				pvc.ResourceVersion = "new"
+				pvc.Status.Phase = v1.ClaimBound
+				pvc.Spec.VolumeName = "testPV"
+			},
+			expectedModifyVolumeCallCount: 1,
+			expectSuccessfulModification:  true,
 		},
 	}
 
@@ -129,6 +145,15 @@ func TestControllerRun(t *testing.T) {
 			go controller.Run(1, ctx)
 
 			time.Sleep(1 * time.Second)
+
+			if tc.pvcModification != nil {
+				tc.pvcModification(tc.pvc)
+				_, err = k8sClient.CoreV1().PersistentVolumeClaims(tc.pvc.Namespace).Update(context.TODO(), tc.pvc, metav1.UpdateOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				time.Sleep(1 * time.Second)
+			}
 
 			if client.GetModifyCallCount() != tc.expectedModifyVolumeCallCount {
 				t.Fatalf("unexpected modify volume call count: expected %d, got %d", tc.expectedModifyVolumeCallCount, client.GetModifyCallCount())
@@ -187,6 +212,30 @@ func newFakePVC() *v1.PersistentVolumeClaim {
 		},
 		Status: v1.PersistentVolumeClaimStatus{
 			Phase: v1.ClaimBound,
+			Capacity: map[v1.ResourceName]resource.Quantity{
+				v1.ResourceStorage: *resource.NewQuantity(10*1024*1024*1024, resource.BinarySI),
+			},
+		},
+	}
+}
+
+func newFakePendingPVCAnnotated() *v1.PersistentVolumeClaim {
+	return &v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "testPVC",
+			Namespace:   namespace,
+			UID:         "test",
+			Annotations: map[string]string{"ebs.csi.aws.com/iops": "5000"},
+		},
+		Spec: v1.PersistentVolumeClaimSpec{
+			Resources: v1.ResourceRequirements{
+				Requests: map[v1.ResourceName]resource.Quantity{
+					v1.ResourceStorage: *resource.NewQuantity(10*1024*1024*1024, resource.BinarySI),
+				},
+			},
+		},
+		Status: v1.PersistentVolumeClaimStatus{
+			Phase: v1.ClaimPending,
 			Capacity: map[v1.ResourceName]resource.Quantity{
 				v1.ResourceStorage: *resource.NewQuantity(10*1024*1024*1024, resource.BinarySI),
 			},
