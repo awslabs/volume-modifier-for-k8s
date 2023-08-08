@@ -142,12 +142,14 @@ func main() {
 	if !*enableLeaderElection {
 		run(context.TODO())
 	} else {
-		lockName := "volume-modifier-for-k8s-" + util.SanitizeName(modifierName)
+		// Ensure volume-modifier-for-k8s and external-resizer sidecars always elect the same leader
+		// by putting them on the same lease that is identified by the lock name.
+		externalResizerLockName := "external-resizer-" + util.SanitizeName(driverName)
 		leKubeClient, err := kubernetes.NewForConfig(config)
 		if err != nil {
 			klog.Fatal(err.Error())
 		}
-		le := leaderelection.NewLeaderElection(leKubeClient, lockName, run)
+		le := leaderelection.NewLeaderElection(leKubeClient, externalResizerLockName, run)
 		if *httpEndpoint != "" {
 			le.PrepareHealthCheck(mux, leaderelection.DefaultHealthCheckTimeout)
 		}
