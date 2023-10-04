@@ -11,13 +11,13 @@ import (
 	csi "github.com/awslabs/volume-modifier-for-k8s/pkg/client"
 	"github.com/awslabs/volume-modifier-for-k8s/pkg/controller"
 	"github.com/awslabs/volume-modifier-for-k8s/pkg/modifier"
-	"github.com/awslabs/volume-modifier-for-k8s/pkg/util"
-	"github.com/kubernetes-csi/csi-lib-utils/leaderelection"
 	"github.com/kubernetes-csi/csi-lib-utils/metrics"
+	v1 "k8s.io/api/coordination/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
@@ -63,6 +63,11 @@ func main() {
 		os.Exit(0)
 	}
 	klog.Infof("Version : %s", version)
+
+	podName := os.Getenv("POD_NAME")
+	if podName == "" {
+		klog.Fatal("POD_NAME environment variable is not set")
+	}
 
 	addr := *httpEndpoint
 	var config *rest.Config
@@ -133,38 +138,49 @@ func main() {
 		workqueue.NewItemExponentialFailureRateLimiter(*retryIntervalStart, *retryIntervalMax),
 		true, /* retryFailure */
 	)
+	leaseChannel := make(chan *v1.Lease)
+	go leaseHandler(podName, mc, leaseChannel)
 
-	run := func(ctx context.Context) {
-		informerFactory.Start(wait.NeverStop)
-		mc.Run(*workers, ctx)
+	leaseInformer := informerFactory.Coordination().V1().Leases().Informer()
+	leaseInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			lease, ok := newObj.(*v1.Lease)
+			if !ok {
+				klog.ErrorS(nil, "Failed to process object, expected it to be a Lease", "obj", newObj)
+				return
+			}
+			if lease.Name == "external-resizer-ebs-csi-aws-com" {
+				leaseChannel <- lease
+			}
+		},
+	})
+	informerFactory.Start(wait.NeverStop)
+	leaseInformer.Run(wait.NeverStop)
+}
+
+func leaseHandler(podName string, mc controller.ModifyController, leaseChannel chan *v1.Lease) {
+	var cancel context.CancelFunc = nil
+
+	for lease := range leaseChannel {
+		currentLeader := *lease.Spec.HolderIdentity
+
+		klog.V(6).InfoS("leaseHandler: Lease updated", "currentLeader", currentLeader, "podName", podName)
+
+		if currentLeader == podName && cancel == nil {
+			var ctx context.Context
+			ctx, cancel = context.WithCancel(context.Background())
+			klog.InfoS("leaseHandler: Starting ModifyController", "podName", podName, "currentLeader", currentLeader)
+			go mc.Run(*workers, ctx)
+		} else if currentLeader != podName && cancel != nil {
+			klog.InfoS("leaseHandler: Stopping ModifyController", "podName", podName, "currentLeader", currentLeader)
+			cancel()
+			cancel = nil
+		}
 	}
 
-	if !*enableLeaderElection {
-		run(context.TODO())
-	} else {
-		// Ensure volume-modifier-for-k8s and external-resizer sidecars always elect the same leader
-		// by putting them on the same lease that is identified by the lock name.
-		externalResizerLockName := "external-resizer-" + util.SanitizeName(driverName)
-		leKubeClient, err := kubernetes.NewForConfig(config)
-		if err != nil {
-			klog.Fatal(err.Error())
-		}
-		le := leaderelection.NewLeaderElection(leKubeClient, externalResizerLockName, run)
-		if *httpEndpoint != "" {
-			le.PrepareHealthCheck(mux, leaderelection.DefaultHealthCheckTimeout)
-		}
-
-		if *leaderElectionNamespace != "" {
-			le.WithNamespace(*leaderElectionNamespace)
-		}
-
-		le.WithLeaseDuration(*leaderElectionLeaseDuration)
-		le.WithRenewDeadline(*leaderElectionRenewDeadline)
-		le.WithRetryPeriod(*leaderElectionRetryPeriod)
-
-		if err := le.Run(); err != nil {
-			klog.Fatalf("error initializing leader election: %v", err)
-		}
+	// Ensure cancel is called if it's not nil when we exit the function
+	if cancel != nil {
+		cancel()
 	}
 }
 
