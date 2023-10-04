@@ -68,6 +68,10 @@ func main() {
 	if podName == "" {
 		klog.Fatal("POD_NAME environment variable is not set")
 	}
+	podNamespace := os.Getenv("POD_NAMESPACE")
+	if podNamespace == "" {
+		klog.Fatal("POD_NAMESPACE environment variable is not set")
+	}
 
 	addr := *httpEndpoint
 	var config *rest.Config
@@ -141,7 +145,8 @@ func main() {
 	leaseChannel := make(chan *v1.Lease)
 	go leaseHandler(podName, mc, leaseChannel)
 
-	leaseInformer := informerFactory.Coordination().V1().Leases().Informer()
+	informerFactoryLeases := informers.NewSharedInformerFactoryWithOptions(kubeClient, *resyncPeriod, informers.WithNamespace(podNamespace))
+	leaseInformer := informerFactoryLeases.Coordination().V1().Leases().Informer()
 	leaseInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			lease, ok := newObj.(*v1.Lease)
@@ -155,6 +160,7 @@ func main() {
 		},
 	})
 	informerFactory.Start(wait.NeverStop)
+	informerFactoryLeases.Start(wait.NeverStop)
 	leaseInformer.Run(wait.NeverStop)
 }
 
