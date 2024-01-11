@@ -63,6 +63,7 @@ func main() {
 		os.Exit(0)
 	}
 	klog.Infof("Version : %s", version)
+	klog.InfoS("Leader election must be enabled in the external-resizer CSI sidecar")
 
 	podName := os.Getenv("POD_NAME")
 	if podName == "" {
@@ -167,26 +168,45 @@ func main() {
 func leaseHandler(podName string, mc controller.ModifyController, leaseChannel chan *v1.Lease) {
 	var cancel context.CancelFunc = nil
 
-	for lease := range leaseChannel {
-		currentLeader := *lease.Spec.HolderIdentity
+	klog.InfoS("leaseHandler: Looking for external-resizer lease holder")
 
-		klog.V(6).InfoS("leaseHandler: Lease updated", "currentLeader", currentLeader, "podName", podName)
+	timer := time.NewTimer(*resyncPeriod)
+	defer timer.Stop()
 
-		if currentLeader == podName && cancel == nil {
-			var ctx context.Context
-			ctx, cancel = context.WithCancel(context.Background())
-			klog.InfoS("leaseHandler: Starting ModifyController", "podName", podName, "currentLeader", currentLeader)
-			go mc.Run(*workers, ctx)
-		} else if currentLeader != podName && cancel != nil {
-			klog.InfoS("leaseHandler: Stopping ModifyController", "podName", podName, "currentLeader", currentLeader)
-			cancel()
-			cancel = nil
+	for {
+		select {
+		case lease, ok := <-leaseChannel:
+			if !ok {
+				if cancel != nil {
+					cancel()
+				}
+				return
+			}
+			currentLeader := *lease.Spec.HolderIdentity
+			klog.V(6).InfoS("leaseHandler: Lease updated", "currentLeader", currentLeader, "podName", podName)
+
+			if currentLeader == podName && cancel == nil {
+				var ctx context.Context
+				ctx, cancel = context.WithCancel(context.Background())
+				klog.InfoS("leaseHandler: Starting ModifyController", "podName", podName, "currentLeader", currentLeader)
+				go mc.Run(*workers, ctx)
+			} else if currentLeader != podName && cancel != nil {
+				klog.InfoS("leaseHandler: Stopping ModifyController", "podName", podName, "currentLeader", currentLeader)
+				cancel()
+				cancel = nil
+			}
+
+			if !timer.Stop() {
+				<-timer.C
+			}
+			timer.Reset(*resyncPeriod)
+
+		case <-timer.C:
+			if cancel != nil {
+				cancel()
+			}
+			klog.Fatalf("leaseHandler: No external-resizer lease update received within timeout period", "timeout", *resyncPeriod)
 		}
-	}
-
-	// Ensure cancel is called if it's not nil when we exit the function
-	if cancel != nil {
-		cancel()
 	}
 }
 
