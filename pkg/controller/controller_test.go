@@ -203,7 +203,7 @@ func newFakePVC() *v1.PersistentVolumeClaim {
 			Annotations: make(map[string]string),
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: map[v1.ResourceName]resource.Quantity{
 					v1.ResourceStorage: *resource.NewQuantity(10*1024*1024*1024, resource.BinarySI),
 				},
@@ -228,7 +228,7 @@ func newFakePendingPVCAnnotated() *v1.PersistentVolumeClaim {
 			Annotations: map[string]string{"ebs.csi.aws.com/iops": "5000"},
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: map[v1.ResourceName]resource.Quantity{
 					v1.ResourceStorage: *resource.NewQuantity(10*1024*1024*1024, resource.BinarySI),
 				},
