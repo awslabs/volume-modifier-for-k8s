@@ -205,7 +205,7 @@ func leaseHandler(podName string, mc controller.ModifyController, leaseChannel c
 			if cancel != nil {
 				cancel()
 			}
-			klog.Fatalf("leaseHandler: No external-resizer lease update received within timeout period", "timeout", *resyncPeriod)
+			klog.Fatalf("leaseHandler: No external-resizer lease update received within timeout period. Timeout: %v", *resyncPeriod)
 		}
 	}
 }
