@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.20 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.22 AS builder
 WORKDIR /go/src/github.com/awslabs/volume-modifier-for-k8s
 COPY go.* .
 ARG GOPROXY=direct
