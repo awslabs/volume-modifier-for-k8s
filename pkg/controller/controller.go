@@ -261,6 +261,14 @@ func (c *modifyController) modifyPVC(pv *v1.PersistentVolume, pvc *v1.Persistent
 	c.addPVCToInProgressList(pvc.Name)
 	defer c.removePVCFromInProgressList(pvc.Name)
 
+	if pvc.Spec.VolumeAttributesClassName != nil && *pvc.Spec.VolumeAttributesClassName != "" {
+		c.eventRecorder.Eventf(pvc, v1.EventTypeWarning, VolumeModificationFailed, "Refusing to modify %s (via annotation) because PVC %s has a VAC associated", pv.Name, pvc.Name)
+		return fmt.Errorf("Refusing to modify because PVC has a VAC associated")
+	} else if pv.Spec.VolumeAttributesClassName != nil && *pv.Spec.VolumeAttributesClassName != "" {
+		c.eventRecorder.Eventf(pvc, v1.EventTypeWarning, VolumeModificationFailed, "Refusing to modify %s (via annotation) because it has a VAC associated", pv.Name)
+		return fmt.Errorf("Refusing to modify because PV has a VAC associated")
+	}
+
 	params := make(map[string]string)
 	for key, value := range pvc.Annotations {
 		if c.isValidAnnotation(key) {
