@@ -25,12 +25,14 @@ type Client interface {
 }
 
 func New(addr string, timeout time.Duration, metricsmanager metrics.CSIMetricsManager) (Client, error) {
-	conn, err := connection.Connect(addr, metricsmanager, connection.OnConnectionLoss(connection.ExitOnConnectionLoss()))
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	conn, err := connection.Connect(ctx, addr, metricsmanager, connection.OnConnectionLoss(connection.ExitOnConnectionLoss()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to CSI driver: %w", err)
 	}
 
-	err = rpc.ProbeForever(conn, timeout)
+	err = rpc.ProbeForever(ctx, conn, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed probing CSI driver: %w", err)
 	}
