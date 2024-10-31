@@ -12,6 +12,7 @@ import (
 	"github.com/awslabs/volume-modifier-for-k8s/pkg/controller"
 	"github.com/awslabs/volume-modifier-for-k8s/pkg/modifier"
 	"github.com/kubernetes-csi/csi-lib-utils/metrics"
+	"github.com/kubernetes-csi/external-resizer/pkg/util"
 	v1 "k8s.io/api/coordination/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
@@ -155,7 +156,8 @@ func main() {
 				klog.ErrorS(nil, "Failed to process object, expected it to be a Lease", "obj", newObj)
 				return
 			}
-			if lease.Name == "external-resizer-ebs-csi-aws-com" {
+			resizerLeaseName := "external-resizer-" + util.SanitizeName(driverName)
+			if lease.Name == resizerLeaseName {
 				leaseChannel <- lease
 			}
 		},

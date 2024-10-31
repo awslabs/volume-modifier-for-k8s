@@ -19,6 +19,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
+	github.com/kubernetes-csi/external-resizer v1.12.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 )
