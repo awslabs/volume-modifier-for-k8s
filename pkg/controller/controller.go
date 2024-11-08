@@ -57,6 +57,7 @@ func NewModifyController(
 		claims:                 pvcInformer.Informer().GetStore(),
 		eventRecorder:          eventRecorder,
 		modificationInProgress: make(map[string]struct{}),
+		retryFailures:          retryModificationFailures,
 	}
 
 	pvcInformer.Informer().AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
