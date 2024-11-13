@@ -50,6 +50,8 @@ var (
 	kubeAPIQPS   = flag.Float64("kube-api-qps", 5, "QPS to use while communicating with the kubernetes apiserver. Defaults to 5.0.")
 	kubeAPIBurst = flag.Int("kube-api-burst", 10, "Burst to use while communicating with the kubernetes apiserver. Defaults to 10.")
 
+	enableControllerClient = flag.Bool("enable-controller-client", false, "Enable to modify volumes through the controller client.")
+
 	// Passed through ldflags.
 	version = "<unknown>"
 )
@@ -98,7 +100,7 @@ func main() {
 	informerFactory := informers.NewSharedInformerFactory(kubeClient, *resyncPeriod)
 	mux := http.NewServeMux()
 	metricsManager := metrics.NewCSIMetricsManager("" /* driverName */)
-	csiClient, err := csi.New(*csiAddress, *timeout, metricsManager)
+	csiClient, err := csi.New(*csiAddress, *timeout, metricsManager, *enableControllerClient)
 	if err != nil {
 		klog.Fatal(err.Error())
 	}
