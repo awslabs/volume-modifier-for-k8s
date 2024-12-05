@@ -102,6 +102,13 @@ func (c *modifyController) Run(workers int, ctx context.Context) {
 		return
 	}
 
+	// On startup, queue all existing PVCs - this ensures that PVCs
+	// awaiting modification (or otherwise in an inconsistent state)
+	// are processed immediately instead of waiting on a resync
+	for _, claim := range c.claims.List() {
+		c.addPVC(claim)
+	}
+
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.syncPVCs, 0, stopCh)
 	}
