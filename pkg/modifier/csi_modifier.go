@@ -49,7 +49,7 @@ func (c *csiModifier) Modify(pv *v1.PersistentVolume, params, reqContext map[str
 	} else {
 		translator := csitrans.New()
 		if translator.IsMigratedCSIDriverByName(c.name) {
-			csiPV, err := translator.TranslateInTreePVToCSI(pv)
+			csiPV, err := translator.TranslateInTreePVToCSI(klog.Background(), pv)
 			if err != nil {
 				return fmt.Errorf("failed to translate persistent volume: %w", err)
 			}
