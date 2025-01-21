@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/connection"
 	"github.com/kubernetes-csi/csi-lib-utils/metrics"
 	"github.com/kubernetes-csi/csi-lib-utils/rpc"
@@ -24,7 +25,7 @@ type Client interface {
 	CloseConnection()
 }
 
-func New(addr string, timeout time.Duration, metricsmanager metrics.CSIMetricsManager) (Client, error) {
+func New(addr string, timeout time.Duration, metricsmanager metrics.CSIMetricsManager, enableControllerClient bool) (Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	conn, err := connection.Connect(ctx, addr, metricsmanager, connection.OnConnectionLoss(connection.ExitOnConnectionLoss()))
@@ -37,13 +38,20 @@ func New(addr string, timeout time.Duration, metricsmanager metrics.CSIMetricsMa
 		return nil, fmt.Errorf("failed probing CSI driver: %w", err)
 	}
 
-	return &client{
+	csiClient := &client{
 		conn: conn,
-	}, nil
+	}
+
+	if enableControllerClient {
+		csiClient.ctrlClient = csi.NewControllerClient(conn)
+	}
+
+	return csiClient, nil
 }
 
 type client struct {
-	conn *grpc.ClientConn
+	conn       *grpc.ClientConn
+	ctrlClient csi.ControllerClient
 }
 
 func (c *client) GetDriverName(ctx context.Context) (string, error) {
@@ -51,6 +59,17 @@ func (c *client) GetDriverName(ctx context.Context) (string, error) {
 }
 
 func (c *client) SupportsVolumeModification(ctx context.Context) error {
+	if c.ctrlClient != nil {
+		caps, err := rpc.GetControllerCapabilities(ctx, c.conn)
+		if err != nil {
+			return fmt.Errorf("error getting controller capabilities: %v", err)
+		}
+		if !caps[csi.ControllerServiceCapability_RPC_MODIFY_VOLUME] {
+			return fmt.Errorf("CSI driver does not support controller modify")
+		}
+		return nil
+	}
+
 	cc := modifyrpc.NewModifyClient(c.conn)
 	req := &modifyrpc.GetCSIDriverModificationCapabilityRequest{}
 	_, err := cc.GetCSIDriverModificationCapability(ctx, req)
@@ -58,6 +77,19 @@ func (c *client) SupportsVolumeModification(ctx context.Context) error {
 }
 
 func (c *client) Modify(ctx context.Context, volumeID string, params, reqContext map[string]string) error {
+	if c.ctrlClient != nil {
+		req := &csi.ControllerModifyVolumeRequest{
+			VolumeId:          volumeID,
+			Secrets:           reqContext,
+			MutableParameters: params,
+		}
+		_, err := c.ctrlClient.ControllerModifyVolume(ctx, req)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	cc := modifyrpc.NewModifyClient(c.conn)
 	req := &modifyrpc.ModifyVolumePropertiesRequest{
 		Name:       volumeID,
