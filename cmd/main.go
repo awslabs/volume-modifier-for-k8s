@@ -95,7 +95,6 @@ func main() {
 		klog.Fatal(err.Error())
 	}
 
-	informerFactory := informers.NewSharedInformerFactory(kubeClient, *resyncPeriod)
 	mux := http.NewServeMux()
 	metricsManager := metrics.NewCSIMetricsManager("" /* driverName */)
 	csiClient, err := csi.New(*csiAddress, *timeout, metricsManager)
@@ -135,15 +134,17 @@ func main() {
 	}
 
 	modifierName := csiModifier.Name()
-	mc := controller.NewModifyController(
-		modifierName,
-		csiModifier,
-		kubeClient,
-		*resyncPeriod,
-		informerFactory,
-		workqueue.NewItemExponentialFailureRateLimiter(*retryIntervalStart, *retryIntervalMax),
-		true, /* retryFailure */
-	)
+	mc := func() controller.ModifyController {
+		return controller.NewModifyController(
+			modifierName,
+			csiModifier,
+			kubeClient,
+			*resyncPeriod,
+			informers.NewSharedInformerFactory(kubeClient, *resyncPeriod),
+			workqueue.NewItemExponentialFailureRateLimiter(*retryIntervalStart, *retryIntervalMax),
+			true, /* retryFailure */
+		)
+	}
 	leaseChannel := make(chan *v1.Lease)
 	go leaseHandler(podName, mc, leaseChannel)
 
@@ -162,12 +163,11 @@ func main() {
 			}
 		},
 	})
-	informerFactory.Start(wait.NeverStop)
 	informerFactoryLeases.Start(wait.NeverStop)
 	leaseInformer.Run(wait.NeverStop)
 }
 
-func leaseHandler(podName string, mc controller.ModifyController, leaseChannel chan *v1.Lease) {
+func leaseHandler(podName string, mc func() controller.ModifyController, leaseChannel chan *v1.Lease) {
 	var cancel context.CancelFunc = nil
 
 	klog.InfoS("leaseHandler: Looking for external-resizer lease holder")
@@ -191,7 +191,7 @@ func leaseHandler(podName string, mc controller.ModifyController, leaseChannel c
 				var ctx context.Context
 				ctx, cancel = context.WithCancel(context.Background())
 				klog.InfoS("leaseHandler: Starting ModifyController", "podName", podName, "currentLeader", currentLeader)
-				go mc.Run(*workers, ctx)
+				go mc().Run(*workers, ctx)
 			} else if currentLeader != podName && cancel != nil {
 				klog.InfoS("leaseHandler: Stopping ModifyController", "podName", podName, "currentLeader", currentLeader)
 				cancel()

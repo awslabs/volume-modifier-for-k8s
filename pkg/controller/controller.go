@@ -65,6 +65,7 @@ func NewModifyController(
 		UpdateFunc: ctrl.updatePVC,
 		DeleteFunc: ctrl.deletePVC,
 	}, resyncPeriod)
+	informerFactory.Start(wait.NeverStop)
 
 	return ctrl
 }
@@ -366,13 +367,13 @@ func (c *modifyController) needsProcessing(old *v1.PersistentVolumeClaim, new *v
 	}
 
 	annotations := make(map[string]struct{})
-	for key, _ := range new.Annotations {
+	for key := range new.Annotations {
 		if c.isValidAnnotation(key) {
 			annotations[key] = struct{}{}
 		}
 	}
 
-	for a, _ := range annotations {
+	for a := range annotations {
 		oldValue := old.Annotations[a]
 		newValue := new.Annotations[a]
 
