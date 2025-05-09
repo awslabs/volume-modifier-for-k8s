@@ -77,7 +77,7 @@ func TestLeaseHandler_PodRegainsLeadership(t *testing.T) {
 	leaseChannel := make(chan *v1.Lease, 3)
 	defer close(leaseChannel)
 
-	go leaseHandler("test-pod", mockModifyController, leaseChannel)
+	go leaseHandler("test-pod", func() controller.ModifyController { return mockModifyController }, leaseChannel)
 
 	// Become the leader
 	leaseChannel <- newLease("external-resizer-ebs-csi-aws-com", "test-pod")
@@ -113,7 +113,7 @@ func TestLeaseHandler_RunCalledOnce(t *testing.T) {
 	leaseChannel := make(chan *v1.Lease, 3)
 	defer close(leaseChannel)
 
-	go leaseHandler("test-pod", mockModifyController, leaseChannel)
+	go leaseHandler("test-pod", func() controller.ModifyController { return mockModifyController }, leaseChannel)
 
 	for i := 0; i < 10; i++ {
 		leaseChannel <- newLease("external-resizer-ebs-csi-aws-com", "test-pod")
@@ -140,7 +140,7 @@ func newLease(name, holderIdentity string) *v1.Lease {
 
 func runLeaseHandlerAndSendLease(t *testing.T, podName string, mockModifyController *controller.MockModifyController, lease *v1.Lease) {
 	leaseChannel := make(chan *v1.Lease, 1)
-	go leaseHandler(podName, mockModifyController, leaseChannel)
+	go leaseHandler(podName, func() controller.ModifyController { return mockModifyController }, leaseChannel)
 	leaseChannel <- lease
 	close(leaseChannel)
 }
