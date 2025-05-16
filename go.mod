@@ -7,12 +7,12 @@ toolchain go1.24.3
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/kubernetes-csi/csi-lib-utils v0.21.0
-	github.com/kubernetes-csi/external-resizer v1.13.2
+	github.com/kubernetes-csi/external-resizer v1.12.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
 	k8s.io/api v0.33.0
 	k8s.io/apimachinery v0.33.0
-	k8s.io/client-go v1.5.2
+	k8s.io/client-go v0.33.0
 	k8s.io/csi-translation-lib v0.33.0
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kubectl v0.33.0
@@ -77,4 +77,6 @@ require (
 
 replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
-replace k8s.io/client-go => k8s.io/client-go v0.33.0
+// Remove after next external-resizer release, required to prevent upgrade to a version of
+// external-resizer that contains broken client-go version v1.5.2 in its go.mod
+replace github.com/kubernetes-csi/external-resizer => github.com/kubernetes-csi/external-resizer v1.12.0
