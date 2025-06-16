@@ -223,7 +223,7 @@ func (c *modifyController) syncPVC(key string) error {
 // Determines if the PVC needs modification.
 func (c *modifyController) pvcNeedsModification(pv *v1.PersistentVolume, pvc *v1.PersistentVolumeClaim) bool {
 	// Check if there's already a modification going on.
-	if c.ifPVCModificationInProgress(pvc.Name) {
+	if c.ifPVCModificationInProgress(pvc) {
 		klog.InfoS("modification for pvc is already undergoing", "pvc", util.PVCKey(pvc))
 		return false
 	}
@@ -247,28 +247,28 @@ func (c *modifyController) pvcNeedsModification(pv *v1.PersistentVolume, pvc *v1
 	return true
 }
 
-func (c *modifyController) addPVCToInProgressList(pvc string) {
+func (c *modifyController) addPVCToInProgressList(pvc *v1.PersistentVolumeClaim) {
 	c.modificationInProgressMu.Lock()
 	defer c.modificationInProgressMu.Unlock()
-	c.modificationInProgress[pvc] = struct{}{}
+	c.modificationInProgress[util.PVCKey(pvc)] = struct{}{}
 }
 
-func (c *modifyController) ifPVCModificationInProgress(pvc string) bool {
+func (c *modifyController) ifPVCModificationInProgress(pvc *v1.PersistentVolumeClaim) bool {
 	c.modificationInProgressMu.Lock()
 	defer c.modificationInProgressMu.Unlock()
-	_, ok := c.modificationInProgress[pvc]
+	_, ok := c.modificationInProgress[util.PVCKey(pvc)]
 	return ok
 }
 
-func (c *modifyController) removePVCFromInProgressList(pvc string) {
+func (c *modifyController) removePVCFromInProgressList(pvc *v1.PersistentVolumeClaim) {
 	c.modificationInProgressMu.Lock()
 	defer c.modificationInProgressMu.Unlock()
-	delete(c.modificationInProgress, pvc)
+	delete(c.modificationInProgress, util.PVCKey(pvc))
 }
 
 func (c *modifyController) modifyPVC(pv *v1.PersistentVolume, pvc *v1.PersistentVolumeClaim) error {
-	c.addPVCToInProgressList(pvc.Name)
-	defer c.removePVCFromInProgressList(pvc.Name)
+	c.addPVCToInProgressList(pvc)
+	defer c.removePVCFromInProgressList(pvc)
 
 	if pvc.Spec.VolumeAttributesClassName != nil && *pvc.Spec.VolumeAttributesClassName != "" {
 		c.eventRecorder.Eventf(pvc, v1.EventTypeWarning, VolumeModificationFailed, "Refusing to modify %s (via annotation) because PVC %s has a VAC associated", pv.Name, pvc.Name)
