@@ -66,9 +66,10 @@ func main() {
 	klog.Infof("Version : %s", version)
 	klog.InfoS("Leader election must be enabled in the external-resizer CSI sidecar")
 
-	podName := os.Getenv("POD_NAME")
-	if podName == "" {
-		klog.Fatal("POD_NAME environment variable is not set")
+	// https://github.com/kubernetes-csi/csi-lib-utils/blob/master/leaderelection/leader_election.go#L212-L214
+	leaseIdentity, err := os.Hostname()
+	if err != nil {
+		klog.Fatal("Failed to get hostname for lease identity", "err", err)
 	}
 	podNamespace := os.Getenv("POD_NAMESPACE")
 	if podNamespace == "" {
@@ -77,7 +78,6 @@ func main() {
 
 	addr := *httpEndpoint
 	var config *rest.Config
-	var err error
 	if *clientConfigUrl != "" || *kubeConfig != "" {
 		config, err = clientcmd.BuildConfigFromFlags(*clientConfigUrl, *kubeConfig)
 	} else {
@@ -146,7 +146,7 @@ func main() {
 		)
 	}
 	leaseChannel := make(chan *v1.Lease)
-	go leaseHandler(podName, mc, leaseChannel)
+	go leaseHandler(leaseIdentity, mc, leaseChannel)
 
 	informerFactoryLeases := informers.NewSharedInformerFactoryWithOptions(kubeClient, *resyncPeriod, informers.WithNamespace(podNamespace))
 	leaseInformer := informerFactoryLeases.Coordination().V1().Leases().Informer()
@@ -167,7 +167,7 @@ func main() {
 	leaseInformer.Run(wait.NeverStop)
 }
 
-func leaseHandler(podName string, mc func() controller.ModifyController, leaseChannel chan *v1.Lease) {
+func leaseHandler(leaseIdentity string, mc func() controller.ModifyController, leaseChannel chan *v1.Lease) {
 	var cancel context.CancelFunc = nil
 
 	klog.InfoS("leaseHandler: Looking for external-resizer lease holder")
@@ -185,15 +185,15 @@ func leaseHandler(podName string, mc func() controller.ModifyController, leaseCh
 				return
 			}
 			currentLeader := *lease.Spec.HolderIdentity
-			klog.V(6).InfoS("leaseHandler: Lease updated", "currentLeader", currentLeader, "podName", podName)
+			klog.V(6).InfoS("leaseHandler: Lease updated", "currentLeader", currentLeader, "leaseIdentity", leaseIdentity)
 
-			if currentLeader == podName && cancel == nil {
+			if currentLeader == leaseIdentity && cancel == nil {
 				var ctx context.Context
 				ctx, cancel = context.WithCancel(context.Background())
-				klog.InfoS("leaseHandler: Starting ModifyController", "podName", podName, "currentLeader", currentLeader)
+				klog.InfoS("leaseHandler: Starting ModifyController", "leaseIdentity", leaseIdentity, "currentLeader", currentLeader)
 				go mc().Run(*workers, ctx)
-			} else if currentLeader != podName && cancel != nil {
-				klog.InfoS("leaseHandler: Stopping ModifyController", "podName", podName, "currentLeader", currentLeader)
+			} else if currentLeader != leaseIdentity && cancel != nil {
+				klog.InfoS("leaseHandler: Stopping ModifyController", "leaseIdentity", leaseIdentity, "currentLeader", currentLeader)
 				cancel()
 				cancel = nil
 			}
