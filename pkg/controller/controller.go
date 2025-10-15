@@ -151,6 +151,7 @@ func (c *modifyController) deletePVC(obj interface{}) {
 		return
 	}
 	c.claimQueue.Forget(objKey)
+	c.claimQueue.Done(objKey)
 }
 
 func (c *modifyController) syncPVCs() {
