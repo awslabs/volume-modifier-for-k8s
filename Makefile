@@ -1,6 +1,6 @@
 PROTO_FILE=modify.proto
 PROTO_GENERATED_FILES_PATH=pkg/rpc
-VERSION="v0.8.0"
+VERSION="v0.9.0"
 LDFLAGS="-X 'main.version=$(VERSION)'"
 .PHONY: all
 all: build
