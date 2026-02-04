@@ -2,7 +2,7 @@
 
 > [!CAUTION]
 > This project has been deprecated in favor of the native Kubernetes [VolumeAttributesClass](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) API.
-> No new features will be added. Security and bug fixes will still be released until at least 6 months after Kubernetes v1.34 is GA (*approximately Q1 2026, exact date is subject to change*). See [[Deprecation Announcement] volume-modifier-for-k8s](https://github.com/kubernetes-sigs/aws-ebs-csi-driver/issues/2435) for more information.
+> No new features will be added. Security and bug fixes will still be released until **April 1st, 2026**. See the [[Deprecation Announcement] volume-modifier-for-k8s](https://github.com/kubernetes-sigs/aws-ebs-csi-driver/issues/2435) for more information.
 
 `volume-modifier-for-k8s` is a sidecar deployed alongside CSI drivers to enable volume modification through annotations on the PVC.
 
