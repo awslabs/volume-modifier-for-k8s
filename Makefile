@@ -1,13 +1,15 @@
 PROTO_FILE=modify.proto
 PROTO_GENERATED_FILES_PATH=pkg/rpc
-VERSION="v0.9.3"
-LDFLAGS="-X 'main.version=$(VERSION)'"
+# Extract from BUILD_PLATFORMS/REV to mimic csi-release-tools behavior
+OS ?= $(word 1,$(BUILD_PLATFORMS))
+ARCH ?= $(word 2,$(BUILD_PLATFORMS))
+REV ?= "v0.9.3"
+LDFLAGS="-X 'main.version=$(REV)'"
 .PHONY: all
-all: build
+all: bin/volume-modifier-for-k8s
 
-.PHONY: build
-build:
-	go build -o bin/main -ldflags ${LDFLAGS} cmd/main.go
+bin:
+	@mkdir -p $@
 
 .PHONY: proto
 proto:
@@ -28,7 +30,7 @@ check: check-proto
 .PHONY: linux/$(ARCH) bin/volume-modifier-for-k8s
 linux/$(ARCH): bin/volume-modifier-for-k8s
 bin/volume-modifier-for-k8s: | bin
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -mod=mod -ldflags ${LDFLAGS} -o bin/volume-modifier-for-k8s ./cmd
+	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build -mod=mod -ldflags ${LDFLAGS} -o bin/volume-modifier-for-k8s ./cmd
 
 .PHONY: check-proto
 check-proto:
