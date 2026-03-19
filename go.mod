@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/kubernetes-csi/csi-lib-utils v0.23.2
 	github.com/kubernetes-csi/external-resizer v1.14.0
-	google.golang.org/grpc v1.79.1
+	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 	k8s.io/api v0.35.1
 	k8s.io/apimachinery v0.35.1
@@ -51,7 +51,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect
 	github.com/go-openapi/jsonreference v0.21.4 // indirect
 	github.com/go-openapi/swag v0.25.4 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.6.0
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
