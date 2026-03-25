@@ -1,3 +1,8 @@
+ifneq (,$(filter new-version,$(MAKECMDGOALS)))
+  NEW_VERSION := $(word 2,$(MAKECMDGOALS))
+  $(eval $(NEW_VERSION):;@:)
+endif
+
 PROTO_FILE=modify.proto
 PROTO_GENERATED_FILES_PATH=pkg/rpc
 # Extract from BUILD_PLATFORMS/REV to mimic csi-release-tools behavior
@@ -39,6 +44,13 @@ check: check-proto
 linux/$(ARCH): bin/volume-modifier-for-k8s
 bin/volume-modifier-for-k8s: | bin
 	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build -mod=mod -ldflags ${LDFLAGS} -o bin/volume-modifier-for-k8s ./cmd
+
+.PHONY: new-version
+new-version:
+	@[ "$(NEW_VERSION)" ] || (echo "Usage: make new-version <version>" && exit 1)
+	sed -i 's/^REV ?= .*/REV ?= "$(NEW_VERSION)"/' Makefile
+	go get -u ./...
+	go mod tidy
 
 .PHONY: check-proto
 check-proto:

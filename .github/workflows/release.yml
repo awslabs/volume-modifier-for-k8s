@@ -1,0 +1,23 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make
+      - run: make test
+      - uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
+        with:
+          generate_release_notes: true
