@@ -292,7 +292,7 @@ func (c *modifyController) modifyPVC(pv *v1.PersistentVolume, pvc *v1.Persistent
 
 	err := c.modifier.Modify(pv, params, reqContext)
 	if err != nil {
-		c.eventRecorder.Eventf(pvc, v1.EventTypeWarning, VolumeModificationFailed, err.Error())
+		c.eventRecorder.Event(pvc, v1.EventTypeWarning, VolumeModificationFailed, err.Error())
 		return fmt.Errorf("modification of volume %q failed by modifier %q: %w", pvc.Name, c.name, err)
 	} else {
 		c.eventRecorder.Eventf(pvc, v1.EventTypeNormal, VolumeModificationSuccessful, "External modifier has successfully modified volume %s", pv.Name)
