@@ -8,7 +8,7 @@ PROTO_GENERATED_FILES_PATH=pkg/rpc
 # Extract from BUILD_PLATFORMS/REV to mimic csi-release-tools behavior
 OS ?= $(word 1,$(BUILD_PLATFORMS))
 ARCH ?= $(word 2,$(BUILD_PLATFORMS))
-REV ?= "v0.9.4"
+REV ?= "v0.9.5"
 LDFLAGS="-X 'main.version=$(REV)'"
 .PHONY: all
 all: bin/volume-modifier-for-k8s
